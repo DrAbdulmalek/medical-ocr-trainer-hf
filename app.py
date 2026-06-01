@@ -41,14 +41,10 @@ from ensemble_ocr import EnsembleOCR, EnsembleResult
 # ============================================================
 # إعدادات المسارات
 # ============================================================
-# على HF Spaces: /data/ للتخزين الدائم (يصمد عند إعادة تشغيل الحاوية)
-# محلياً: المجلدات المحلية الافتراضية
-IS_HF_SPACE = bool(os.environ.get("SPACE_ID") or os.environ.get("HF_SPACE"))
-
-DIR_UPLOADS = os.environ.get("DIR_UPLOADS", "/data/uploads" if IS_HF_SPACE else "uploads")
-DIR_CROPS = os.environ.get("DIR_CROPS", "/data/crops" if IS_HF_SPACE else "crops")
-DIR_DB = os.environ.get("DIR_DB", "/data" if IS_HF_SPACE else "data")
-DB_PATH = os.environ.get("DB_PATH", "/data/corrections.db" if IS_HF_SPACE else "data/corrections.db")
+DIR_UPLOADS = "uploads"
+DIR_CROPS = "crops"
+DIR_DB = "data"
+DB_PATH = os.path.join(DIR_DB, "corrections.db")
 
 for d in [DIR_UPLOADS, DIR_CROPS, DIR_DB]:
     os.makedirs(d, exist_ok=True)
@@ -66,7 +62,7 @@ def get_ensemble(
     key = f"ensemble_{strategy}_{'_'.join(sorted(engines or []))}_{confidence_threshold}"
     if key not in st.session_state:
         st.session_state[key] = EnsembleOCR(
-            engines=engines or ['paddleocr', 'easyocr', 'tesseract'],
+            engines=engines or ['paddleocr', 'easyocr', 'tesseract', 'trocr', 'surya'],
             strategy=strategy,
             confidence_threshold=confidence_threshold,
         )
@@ -197,7 +193,7 @@ def save_words_meta(image_id, ensemble_result):
             (image_id, engine_name, word_count, processing_time, available, error, raw_results)
             VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
-                image_id, name, er.word_count, er.processing_time,
+                image_id, name, len(er.words), er.processing_time,
                 1 if er.available else 0, er.error,
                 json.dumps(er.to_dict(), ensure_ascii=False),
             )
@@ -469,7 +465,7 @@ def main():
             avail = st.session_state.engine_availability.get(eng, False)
             label = f"{info.get('icon', '?')} {info.get('name', eng)}"
             if avail:
-                if st.checkbox(label, value=(eng in ['paddleocr', 'easyocr', 'tesseract']), key=f"engine_{eng}"):
+                if st.checkbox(label, value=True, key=f"engine_{eng}"):
                     selected_engines.append(eng)
             else:
                 st.checkbox(label, value=False, key=f"engine_{eng}", disabled=True)
@@ -643,7 +639,7 @@ def main():
                         perf_data.append({
                             "المحرك": f"{info.get('icon', '')} {info.get('name', name)}",
                             "الحالة": "✅ نشط" if er.available else "❌",
-                            "عدد الكلمات": er.word_count,
+                            "عدد الكلمات": len(er.words),
                             "الوقت (ث)": f"{er.processing_time:.2f}",
                         })
                     st.dataframe(
