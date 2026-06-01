@@ -1,0 +1,32 @@
+# HF Space Requirements — Optimized for free tier (16GB RAM, 2 vCPU)
+# ===================================================================
+
+# === Core ===
+streamlit>=1.28.0
+Pillow>=10.0.0
+pandas>=2.0.0
+numpy>=1.24.0,<2.0.0
+
+# === OCR Engines (Active by default) ===
+
+# 1. PaddleOCR — Arabic + English (~300MB RAM)
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0
+opencv-python-headless>=4.8.0
+
+# 2. EasyOCR — 80+ languages (~500MB RAM)
+easyocr>=1.7.0
+
+# 3. Tesseract — Fast, printed text (~50MB RAM, system package)
+pytesseract>=0.3.10
+
+# === Optional Engines (disabled by default, enable via env vars) ===
+
+# 4. TrOCR — Transformer handwriting (~1.5GB RAM)
+# Uncomment if you have a paid HF Space with more RAM:
+# transformers>=4.35.0
+# sentencepiece>=0.1.99
+
+# 5. Surya OCR — Modern engine (~800MB RAM)
+# Uncomment if you have a paid HF Space with more RAM:
+# surya-ocr>=0.5.0
