@@ -33,8 +33,9 @@ ENV PADDLE_HOME=/app/.cache/paddleocr
 ENV HF_HUB_OFFLINE=1
 ENV TRANSFORMERS_OFFLINE=1
 
-# إنشاء مجلدات التخزين المؤقت
-RUN mkdir -p /app/.cache/huggingface /app/.cache/torch /app/.cache/paddleocr /app/data /app/uploads /app/crops /app/exports
+# إنشاء مجلدات التخزين المؤقت + التخزين الدائم /data/
+RUN mkdir -p /app/.cache/huggingface /app/.cache/torch /app/.cache/paddleocr \
+    /data/uploads /data/crops /data/db /data/exports
 
 WORKDIR /app
 
