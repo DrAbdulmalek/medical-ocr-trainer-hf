@@ -5,22 +5,33 @@ colorFrom: blue
 colorTo: green
 sdk: docker
 app_port: 7860
-pinned: false
 ---
 
-# Medical OCR Trainer — Ensemble
+# Medical OCR Trainer — Hugging Face Deployment
 
-**5 OCR Engines + Smart Merging** — Interactive tool for training and correcting medical handwriting OCR.
+> **Deployment-only repository** — Source of truth: [medical-ocr-trainer](https://github.com/DrAbdulmalek/medical-ocr-trainer)
+
+---
+
+## Repository Status
+
+| Field | Value |
+|-------|-------|
+| **Role** | Deployment Repo (Hugging Face Space) |
+| **Status** | Active (Demo) |
+| **Layer** | Deployment |
+| **Priority** | Low |
+| **Source of Truth** | [medical-ocr-trainer](https://github.com/DrAbdulmalek/medical-ocr-trainer) |
 
 ## Active Engines (Free Tier)
 
 | Engine | Status | Description |
 |--------|--------|-------------|
-| 🔷 PaddleOCR | ✅ Active | Arabic + English, best for mixed medical docs |
-| 🟢 EasyOCR | ✅ Active | 80+ languages, Latin text |
-| 🔵 Tesseract | ✅ Active | Fast, reliable for printed text |
-| 🟠 TrOCR | ⬜ Disabled | Needs more RAM (paid space) |
-| 🟣 Surya OCR | ⬜ Disabled | Needs more RAM (paid space) |
+| PaddleOCR | Active | Arabic + English, best for mixed medical docs |
+| EasyOCR | Active | 80+ languages, Latin text |
+| Tesseract | Active | Fast, reliable for printed text |
+| TrOCR | Disabled | Needs more RAM (paid space) |
+| Surya OCR | Disabled | Needs more RAM (paid space) |
 
 ## How to Use
 
@@ -32,14 +43,32 @@ pinned: false
 
 ## Merging Strategies
 
-- **🗳️ Majority Voting** — Text with most engine votes wins
-- **⚖️ Confidence Weighted** — Weighted average by confidence
-- **📏 Levenshtein Consensus** — Most similar text across all engines
-- **🏆 Best Single** — Highest confidence result
+- **Majority Voting** — Text with most engine votes wins
+- **Confidence Weighted** — Weighted average by confidence
+- **Levenshtein Consensus** — Most similar text across all engines
+- **Best Single** — Highest confidence result
 
-## Technical Details
+## Technical Notes
 
-- Persistent storage via `/data/` (survives container restarts)
-- CPU-only PyTorch for minimal memory footprint
+- Persistent storage via `/data/`
+- CPU-only PyTorch (HuggingFace free tier limits)
 - Streamlit UI with Arabic RTL support
-- SQLite database for corrections and engine logs
+- SQLite database for corrections
+
+## When to Use This
+
+| Need | Repository |
+|------|-----------|
+| Quick demo / try online | **This repo** (HF Space) |
+| Full local development | [medical-ocr-trainer](https://github.com/DrAbdulmalek/medical-ocr-trainer) |
+| Production OCR | [medical-handwriting-ocr](https://github.com/DrAbdulmalek/medical-handwriting-ocr) |
+
+## Related Repositories
+
+| Repo | Role | Status |
+|------|------|--------|
+| [medical-ocr-trainer](https://github.com/DrAbdulmalek/medical-ocr-trainer) | Source of Truth | Active |
+| [medical-handwriting-ocr](https://github.com/DrAbdulmalek/medical-handwriting-ocr) | Production OCR | Active |
+| [omni-medical-suite](https://github.com/DrAbdulmalek/omni-medical-suite) | Main Platform | Active |
+
+**License: MIT** — Dr. Abdulmalek Tamer Al-husseini
