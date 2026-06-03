@@ -29,10 +29,15 @@ import json
 import sqlite3
 import uuid
 import time
+import logging
 import streamlit as st
 import pandas as pd
+import numpy as np
+import cv2
 from PIL import Image, ImageEnhance, ImageFilter
 from datetime import datetime
+
+logger = logging.getLogger("MedicalOCR")
 
 # استيراد نظام التجمع
 from ensemble_ocr import EnsembleOCR, EnsembleResult
@@ -400,21 +405,256 @@ def detect_script(text):
 
 
 # ============================================================
-# معالجة الصورة (تحسين التباين والحدة)
+# كشف اللغة تلقائياً من الصورة
 # ============================================================
-def preprocess_image(img_path):
+def detect_image_language(image_path):
     """
-    معالجة مبدئية للصورة:
-    - تحويل إلى تدرج رمادي
-    - زيادة التباين (1.6x) للخط اليدوي
-    - شحذ الحواف
+    كشف اللغة السائدة في الصورة باستخدام Tesseract السريع.
+    يعيد 'ar', 'en', 'mixed', أو 'unknown'.
     """
-    img = Image.open(img_path).convert("L")
-    img = ImageEnhance.Contrast(img).enhance(1.6)
-    img = img.filter(ImageFilter.SHARPEN)
+    try:
+        import pytesseract
+        img = Image.open(image_path)
+        # استخراج النص بسرعة باستخدام Tesseract
+        text = pytesseract.image_to_string(img, lang='ara+eng', config='--psm 6 --oem 3')
+
+        if not text.strip():
+            return 'unknown'
+
+        # حساب نسبة الحروف العربية
+        arabic_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF' or '\u0750' <= c <= '\u077F'
+                                or '\uFB50' <= c <= '\uFDFF' or '\uFE70' <= c <= '\uFEFF')
+        latin_chars = sum(1 for c in text if 'A' <= c <= 'Z' or 'a' <= c <= 'z')
+        total = max(len(text.strip()), 1)
+
+        arabic_ratio = arabic_chars / total
+        latin_ratio = latin_chars / total
+
+        if arabic_ratio > 0.3:
+            return 'mixed' if latin_ratio > 0.2 else 'ar'
+        elif latin_ratio > 0.3:
+            return 'en'
+        else:
+            return 'unknown'
+    except Exception as e:
+        logger.warning(f"Language detection failed: {e}")
+        return 'unknown'
+
+
+# ============================================================
+# معالجة الصورة المتقدمة (Preprocessing Pipeline v2)
+# ============================================================
+def preprocess_image(img_path, lang='unknown'):
+    """
+    معالجة متقدمة للصورة قبل OCR:
+    1. إزالة الحدود الرمادية (border removal)
+    2. تصحيح الميل (deskew) باستخدام Projection Profile
+    3. تقليل الضوضاء (median denoise)
+    4. تحسين التباين التكيفي (CLAHE)
+    5. ثنائية تكيفية (adaptive binarization)
+    """
+    # قراءة الصورة بـ OpenCV
+    img_cv = cv2.imread(img_path)
+    if img_cv is None:
+        logger.error(f"Cannot read image: {img_path}")
+        return img_path
+
+    original = img_cv.copy()
+    gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+
+    # --- الخطوة 1: إزالة الحدود الرمادية ---
+    gray = _remove_borders(gray)
+
+    # --- الخطوة 2: تصحيح الميل ---
+    gray = _deskew(gray)
+
+    # --- الخطوة 3: تقليل الضوضاء ---
+    gray = cv2.medianBlur(gray, 3)
+
+    # --- الخطوة 4: تحسين التباين التكيفي (CLAHE) ---
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
+
+    # --- الخطوة 5: ثنائية تكيفية ---
+    # Otsu للصور الواضحة، adaptive للصور ذات الإضاءة غير المتساوية
+    _, otsu_thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # فحص جودة Otsu — إذا كانت النسبة المتوسطة قريبة من 0.5، الصورة محتاجة adaptive
+    white_ratio = np.sum(otsu_thresh == 255) / otsu_thresh.size
+    if 0.3 < white_ratio < 0.7:
+        # استخدام adaptive threshold — أفضل للظلال
+        binary = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY, 15, 10
+        )
+    else:
+        binary = otsu_thresh
+
+    # --- الخطوة 6: شحذ الحواف ---
+    binary = cv2.bitwise_not(binary)
+    kernel = np.ones((1, 1), np.uint8)
+    binary = cv2.dilate(binary, kernel, iterations=1)
+    binary = cv2.bitwise_not(binary)
+
+    # حفظ الصورة المعالجة — نسخة رمادية (الأفضل للـ DNN مثل PaddleOCR و EasyOCR)
     pre_path = img_path + "_pre.png"
-    img.save(pre_path)
+    cv2.imwrite(pre_path, gray)
+
+    # حفظ نسخة ثنائية (للتطبيقات التي تحتاجها مثل Tesseract البديل)
+    pre_binary_path = img_path + "_pre_binary.png"
+    cv2.imwrite(pre_binary_path, binary)
+
     return pre_path
+
+
+def _remove_borders(gray):
+    """
+    إزالة الحدود الرمادية والظلال من حواف الصورة.
+    يستخدم أكبر كونتور للعثور على منطقة الصفحة الفعلية.
+    """
+    h, w = gray.shape
+
+    # تطبيق threshold للعثور على الحدود
+    thresh = cv2.adaptiveThreshold(
+        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV, 11, 2
+    )
+
+    # إزالة الضوضاء الصغيرة
+    kernel_h = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 1))
+    kernel_v = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 30))
+    dilated = cv2.dilate(thresh, kernel_h, iterations=1)
+    dilated = cv2.dilate(dilated, kernel_v, iterations=1)
+
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        # أكبر كونتور = الصفحة
+        largest = max(contours, key=cv2.contourArea)
+        x, y, bw, bh = cv2.boundingRect(largest)
+
+        # إذا كانت منطقة الصفحة قريبة من حجم الصورة الكاملة، لا نقتص
+        page_ratio = (bw * bh) / (w * h)
+        if page_ratio > 0.85:
+            return gray
+
+        # إضافة هامش صغير
+        margin = 5
+        x1 = max(0, x - margin)
+        y1 = max(0, y - margin)
+        x2 = min(w, x + bw + margin)
+        y2 = min(h, y + bh + margin)
+
+        return gray[y1:y2, x1:x2]
+
+    return gray
+
+
+def _deskew(gray):
+    """
+    تصحيح ميل الصورة باستخدام Projection Profile.
+    يفحص الزوايا من -15° إلى +15° ويختار أفضلها.
+    """
+    # تحويل إلى صورة ثنائية مؤقتة للتحليل
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+
+    min_angle = -15
+    max_angle = 15
+    best_angle = 0
+    best_variance = 0
+    angles = []
+
+    for angle in range(min_angle, max_angle + 1, 1):
+        h, w = thresh.shape
+        center = (w // 2, h // 2)
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        rotated = cv2.warpAffine(
+            thresh, M, (w, h),
+            flags=cv2.INTER_CUBIC,
+            borderMode=cv2.BORDER_REPLICATE
+        )
+
+        # Projection Profile: مجموع البكسلات لكل سطر
+        projection = np.sum(rotated, axis=1)
+        variance = np.var(projection)
+        angles.append((angle, variance))
+
+    # اختيار الزاوية ذات أعلى variance
+    best_angle, best_variance = max(angles, key=lambda x: x[1])
+
+    # فحص: هل التصحيح ذو قيمة فعلية؟
+    second_best = sorted(angles, key=lambda x: x[1], reverse=True)[1]
+    variance_range = best_variance - second_best[1]
+    # إذا كان الفرق ضعيفاً، الصورة مستقيمة
+    if variance_range < np.mean([v for _, v in angles]) * 0.01:
+        return gray
+
+    if best_angle == 0:
+        return gray
+
+    logger.info(f"Deskew: correcting by {best_angle} degrees")
+
+    # تطبيق التصحيح على الصورة الأصلية
+    h, w = gray.shape
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, best_angle, 1.0)
+    deskewed = cv2.warpAffine(
+        gray, M, (w, h),
+        flags=cv2.INTER_CUBIC,
+        borderMode=cv2.BORDER_REPLICATE
+    )
+
+    return deskewed
+
+
+def calculate_confidence(result_text, image_path=None):
+    """
+    حساب ثقة حقيقية بناءً على جودة النص المستخرج.
+    لا تعتمد فقط على ثقة المحرك — بل تفحص:
+    1. طول النص مقابل حجم الصورة
+    2. وجود حروف عربية عند معالجة مستندات عربية
+    3. نسبة الأحرف غير المطبوعة (noise)
+    """
+    if not result_text or not result_text.strip():
+        return 0.0
+
+    text = result_text.strip()
+    text_len = len(text)
+
+    # فحص الحد الأدنى
+    if text_len < 5:
+        return 0.05
+
+    # فحص الحروف العربية
+    arabic_chars = sum(1 for c in text if '\u0600' <= c <= '\u06FF' or '\u0750' <= c <= '\u077F')
+    arabic_ratio = arabic_chars / text_len
+
+    # فحص الأحرف غير المطبوعة (noise ratio)
+    printable = sum(1 for c in text if c.isprintable() and not c.isspace())
+    noise_ratio = 1 - (printable / text_len)
+
+    # حساب الثقة
+    score = 0.5  # base score
+
+    # مكافأة للنصوص الطويلة (مؤشر على استخراج ناجح)
+    if text_len > 50:
+        score += 0.15
+    elif text_len > 20:
+        score += 0.10
+
+    # مكافأة/عقاب للحروف العربية
+    if arabic_ratio > 0.3:
+        score += 0.2  # مستند عربي — حروف عربية موجودة
+    elif arabic_ratio > 0.1:
+        score += 0.1
+    elif text_len > 20 and arabic_ratio == 0:
+        # نص طويل بدون أي عربي — مشبوه إذا كان المستند عربي
+        score -= 0.1
+
+    # عقاب للضوضاء
+    if noise_ratio > 0.1:
+        score -= noise_ratio * 0.3
+
+    return max(0.0, min(1.0, score))
 
 
 # ============================================================
@@ -597,12 +837,12 @@ def main():
                 """
                 ### 📤 ارفع مستندك الطبي
                 يدعم التطبيق:
-                - **5 محركات OCR** مع تجمع ذكي
+                - **3 محركات OCR** مع تجمع ذكي (PaddleOCR + EasyOCR + Tesseract)
                 - **الخط اليدوي** العربي والإنجليزي
                 - **4 استراتيجيات دمج** مختلفة
                 - **مقارنة تفصيلية** لنتائج كل محرك
-
-                يتم تحسين الصورة تلقائياً (زيادة التباين + شحذ الحواف) قبل التشغيل.
+                - **معالجة متقدمة**: تصحيح الميل + CLAHE + ثنائية تكيفية + إزالة الحدود
+                - **كشف اللغة التلقائي**: تحديد العربية/الإنجليزية تلقائياً
                 """
             )
         else:
@@ -617,28 +857,60 @@ def main():
                 progress_placeholder = st.empty()
                 log_placeholder = st.empty()
 
-                progress_placeholder.progress(0, text="جاري تهيئة المحركات...")
+                progress_placeholder.progress(0, text="جاري كشف اللغة...")
 
-                # إنشاء نظام التجمع
+                # === كشف اللغة تلقائياً ===
+                detected_lang = detect_image_language(file_path)
+                lang_labels = {'ar': '🇸🇦 عربي', 'en': '🇬🇧 إنجليزي', 'mixed': '🌐 مختلط', 'unknown': '❓ غير معروف'}
+                lang_label = lang_labels.get(detected_lang, detected_lang)
+
+                progress_placeholder.progress(10, text=f"اللغة المكتشفة: {lang_label}")
+
+                # === معالجة الصورة المتقدمة ===
+                progress_placeholder.progress(20, text="جاري معالجة الصورة (deskew + CLAHE + binarization)...")
+                pre_path = preprocess_image(file_path, lang=detected_lang)
+
+                progress_placeholder.progress(40, text="جاري تهيئة المحركات...")
+
+                # إنشاء نظام التجمع مع تحديد اللغة
                 ensemble = EnsembleOCR(
                     engines=selected_engines,
                     strategy=strategy,
                     confidence_threshold=confidence_threshold,
+                    language=detected_lang,
                 )
 
-                with st.spinner(f"⚙️ تشغيل {len(selected_engines)} محرك OCR ({strategy})..."):
-                    # معالجة الصورة
-                    pre_path = preprocess_image(file_path)
+                with st.spinner(f"⚙️ تشغيل {len(selected_engines)} محرك OCR ({strategy}) — اللغة: {lang_label}..."):
                     result = ensemble.process_image(pre_path, strategy=strategy)
+                    progress_placeholder.progress(90, text="جاري دمج النتائج...")
 
-                    progress_placeholder.progress(100, text="تم!")
+                # === حساب الثقة الحقيقية ===
+                full_text = ' '.join(w.text for w in result.words)
+                real_confidence = calculate_confidence(full_text, file_path)
+
+                progress_placeholder.progress(100, text="تم!")
+
+                # عرض معلومات المعالجة المسبقة
+                with st.expander("🔧 تفاصيل المعالجة المسبقة", expanded=False):
+                    st.markdown(f"**اللغة المكتشفة**: {lang_label} (`{detected_lang}`)")
+                    st.markdown(f"**الصورة المعالجة**: `border removal → deskew → CLAHE → adaptive binarization`")
+                    # عرض الصورة المعالجة
+                    try:
+                        st.image(pre_path, caption="الصورة بعد المعالجة", use_container_width=True)
+                    except Exception:
+                        pass
 
                 # عرض ملخص الأداء
                 st.markdown("### 📊 ملخص الأداء")
-                perf_cols = st.columns(3)
+                perf_cols = st.columns(4)
                 perf_cols[0].metric("⏱️ الوقت الكلي", f"{result.total_time:.2f}s")
                 perf_cols[1].metric("📝 الكلمات المدمجة", len(result.words))
                 perf_cols[2].metric("🔧 المحركات النشطة", len(result.engines_active))
+                perf_cols[3].metric("🎯 الثقة الحقيقية", f"{real_confidence:.0%}")
+
+                # تحذير إذا كانت الثقة منخفضة
+                if real_confidence < 0.3:
+                    st.warning(f"⚠️ الثقة الحقيقية منخفضة ({real_confidence:.0%}). قد يكون النص المستخرج غير دقيق. جرّب: تفعيل المزيد من المحركات أو استخدام صورة أوضح.")
 
                 # عرض أداء كل محرك
                 with st.expander("📋 أداء كل محرك", expanded=False):

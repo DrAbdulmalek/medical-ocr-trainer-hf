@@ -184,10 +184,17 @@ class PaddleOcrEngine(BaseOcrEngine):
     supports_handwriting = True
     memory_mb = 300
 
-    def __init__(self, lang='ar'):
+    def __init__(self, lang='ar', language=None):
         self.lang = lang
         self._model = None
         self._available = None
+        # If language hint is provided, override
+        if language == 'ar':
+            self.lang = 'ar'
+        elif language == 'en':
+            self.lang = 'en'
+        elif language == 'mixed':
+            self.lang = 'ar'  # Arabic-first for mixed
 
     def is_available(self) -> bool:
         if self._available is not None:
@@ -207,8 +214,9 @@ class PaddleOcrEngine(BaseOcrEngine):
             # Suppress PaddleOCR verbose logs in production
             _logging.getLogger("ppocr").setLevel(_logging.WARNING)
             self._model = PaddleOCR(
-                use_textline_orientation=True,
+                use_angle_cls=True,
                 lang=self.lang,
+                # show_log removed — not supported in all versions
             )
         return self._model
 
@@ -256,8 +264,15 @@ class EasyOcrEngine(BaseOcrEngine):
     supports_handwriting = True
     memory_mb = 500
 
-    def __init__(self, langs=['ar', 'en']):
-        self.langs = langs
+    def __init__(self, langs=['ar', 'en'], language=None):
+        if language == 'ar':
+            self.langs = ['ar']
+        elif language == 'en':
+            self.langs = ['en']
+        elif language == 'mixed':
+            self.langs = ['ar', 'en']
+        else:
+            self.langs = langs
         self._reader = None
         self._available = None
 
@@ -322,8 +337,15 @@ class TesseractEngine(BaseOcrEngine):
     supports_handwriting = False
     memory_mb = 50
 
-    def __init__(self, langs='ara+eng'):
-        self.langs = langs
+    def __init__(self, langs='ara+eng', language=None):
+        if language == 'ar':
+            self.langs = 'ara'
+        elif language == 'en':
+            self.langs = 'eng'
+        elif language == 'mixed':
+            self.langs = 'ara+eng'
+        else:
+            self.langs = langs
         self._available = None
 
     def is_available(self) -> bool:
@@ -729,12 +751,13 @@ class EnsembleOCR:
         },
     }
 
-    def __init__(self, engines=None, strategy='majority_voting', confidence_threshold=0.3):
+    def __init__(self, engines=None, strategy='majority_voting', confidence_threshold=0.3, language=None):
         """
         Args:
             engines: قائمة المحركات ('all' أو قائمة محددة)
             strategy: استراتيجية الدمج
-            confidence_threshold: الحد الأدنى للثقة لقبول كلمة
+            confidence_hint: الحد الأدنى للثقة لقبول كلمة
+            language: اللغة المكتشفة ('ar', 'en', 'mixed', 'unknown')
         """
         if engines == 'all' or engines is None:
             self.engine_names = list(self.ENGINE_MAP.keys())
@@ -743,17 +766,19 @@ class EnsembleOCR:
 
         self.strategy = strategy
         self.confidence_threshold = confidence_threshold
+        self.language = language
         self._engines: Dict[str, BaseOcrEngine] = {}
         self._initialized = False
 
     def _init_engines(self):
-        """تحميل المحركات المطلوبة (lazy loading)"""
+        """تحميل المحركات المطلوبة (lazy loading مع دعم اللغة)"""
         if self._initialized:
             return
 
         for name in self.engine_names:
             engine_class = self.ENGINE_MAP[name]
-            self._engines[name] = engine_class()
+            # Pass language hint to engine constructors
+            self._engines[name] = engine_class(language=self.language)
 
         self._initialized = True
 

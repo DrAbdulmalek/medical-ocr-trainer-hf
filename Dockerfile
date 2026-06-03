@@ -1,7 +1,6 @@
 # =============================================================
 # Medical OCR Trainer — Docker for HF Spaces (Free Tier)
-# Lightweight: 3 engines only (PaddleOCR + EasyOCR + Tesseract)
-# TrOCR + Surya removed — need ~2.3GB extra RAM
+# v3.0: Advanced preprocessing + language detection + fixed engines
 # =============================================================
 FROM python:3.11-slim
 
