@@ -9,7 +9,7 @@ app_port: 7860
 
 # Medical OCR Trainer — Hugging Face Deployment
 
-> **Deployment-only repository** — Source of truth: [medical-ocr-trainer](https://github.com/DrAbdulmalek/medical-ocr-trainer)
+> **Deployment-only repository** — Source of truth: [omni-medical-suite/apps/trainer-ui/](https://github.com/DrAbdulmalek/omni-medical-suite/tree/main/apps/trainer-ui)
 
 ---
 
@@ -21,7 +21,7 @@ app_port: 7860
 | **Status** | Active (Demo) |
 | **Layer** | Deployment |
 | **Priority** | Low |
-| **Source of Truth** | [medical-ocr-trainer](https://github.com/DrAbdulmalek/medical-ocr-trainer) |
+| **Source of Truth** | [omni-medical-suite/apps/trainer-ui/](https://github.com/DrAbdulmalek/omni-medical-suite/tree/main/apps/trainer-ui) |
 
 ## Active Engines (Free Tier)
 
@@ -60,15 +60,15 @@ app_port: 7860
 | Need | Repository |
 |------|-----------|
 | Quick demo / try online | **This repo** (HF Space) |
-| Full local development | [medical-ocr-trainer](https://github.com/DrAbdulmalek/medical-ocr-trainer) |
-| Production OCR | [medical-handwriting-ocr](https://github.com/DrAbdulmalek/medical-handwriting-ocr) |
+| Full local development | [omni-medical-suite](https://github.com/DrAbdulmalek/omni-medical-suite) |
+| Production OCR | [omni-medical-suite/apps/handwriting-demo/](https://github.com/DrAbdulmalek/omni-medical-suite/tree/main/apps/handwriting-demo) |
 
 ## Related Repositories
 
 | Repo | Role | Status |
 |------|------|--------|
-| [medical-ocr-trainer](https://github.com/DrAbdulmalek/medical-ocr-trainer) | Source of Truth | Active |
-| [medical-handwriting-ocr](https://github.com/DrAbdulmalek/medical-handwriting-ocr) | Production OCR | Active |
+| [omni-medical-suite/apps/trainer-ui/](https://github.com/DrAbdulmalek/omni-medical-suite/tree/main/apps/trainer-ui) | Source of Truth | Active |
+| [omni-medical-suite/apps/handwriting-demo/](https://github.com/DrAbdulmalek/omni-medical-suite/tree/main/apps/handwriting-demo) | Handwriting + Clinical | Active |
 | [omni-medical-suite](https://github.com/DrAbdulmalek/omni-medical-suite) | Main Platform | Active |
 
 **License: MIT** — Dr. Abdulmalek Tamer Al-husseini
