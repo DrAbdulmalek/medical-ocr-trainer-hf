@@ -1,0 +1,15 @@
+# Root flake8 config - strict gate scope.
+# legacy/ is ported archived code (see DATA_GOVERNANCE.md); it is excluded from
+# the root run to keep reports focused on live code.
+[flake8]
+exclude =
+    .git,
+    __pycache__,
+    legacy,
+    crops,
+    uploads,
+    logs,
+    build,
+    dist
+max-line-length = 120
+extend-ignore = E203, W503
