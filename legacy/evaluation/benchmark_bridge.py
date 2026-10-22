@@ -221,7 +221,7 @@ class BenchmarkBridge:
             logger.info("BenchmarkBridge: all benchmark components initialised")
         except Exception as exc:
             logger.warning(
-                f"BenchmarkBridge: failed to initialise benchmark components "
+                "BenchmarkBridge: failed to initialise benchmark components "
                 f"({exc}). Falling back to local-only metrics."
             )
             self._runner = None
@@ -394,7 +394,7 @@ class BenchmarkBridge:
             return str(path)
         except Exception as exc:
             logger.warning(
-                f"BenchmarkBridge: failed to download dataset "
+                "BenchmarkBridge: failed to download dataset "
                 f"'{dataset_name}' ({exc})"
             )
             return None

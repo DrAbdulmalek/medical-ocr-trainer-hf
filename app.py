@@ -893,7 +893,7 @@ def main():
                 # عرض معلومات المعالجة المسبقة
                 with st.expander("🔧 تفاصيل المعالجة المسبقة", expanded=False):
                     st.markdown(f"**اللغة المكتشفة**: {lang_label} (`{detected_lang}`)")
-                    st.markdown(f"**الصورة المعالجة**: `border removal → deskew → CLAHE → adaptive binarization`")
+                    st.markdown("**الصورة المعالجة**: `border removal → deskew → CLAHE → adaptive binarization`")
                     # عرض الصورة المعالجة
                     try:
                         st.image(pre_path, caption="الصورة بعد المعالجة", use_container_width=True)

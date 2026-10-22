@@ -203,7 +203,7 @@ def _format_markdown(results: Dict[str, Any]) -> str:
         if len(per_sample) > 50:
             lines.append(
                 f"| ... | ({len(per_sample) - 50} more samples) "
-                f"| | | | | |"
+                "| | | | | |"
             )
 
     report_path = results.get("report_path")
@@ -249,7 +249,7 @@ def _format_html(results: Dict[str, Any]) -> str:
             "basename", s.get("image_path", f"Sample {s['index']}")
         )
         rows_html += (
-            f"<tr>"
+            "<tr>"
             f"<td>{s['index']}</td>"
             f"<td>{name}</td>"
             f"<td>{s['cer']:.4f}</td>"
@@ -257,10 +257,10 @@ def _format_html(results: Dict[str, Any]) -> str:
             f"<td>{s['medical_accuracy']:.4f}</td>"
             f"<td>{conf}</td>"
             f"<td>{s.get('engine', '—')}</td>"
-            f"</tr>\n"
+            "</tr>\n"
         )
 
-    return f"""<!DOCTYPE html>
+    return """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -584,13 +584,13 @@ def main():
     all_ok = all(tp.values())
     if all_ok:
         print(
-            f"\n✅ All thresholds passed! "
+            "\n✅ All thresholds passed! "
             f"CER={results['cer']:.4f}, "
             f"WER={results['wer']:.4f}, "
             f"MedAcc={results['medical_accuracy']:.4f}"
         )
     else:
-        print(f"\n❌ Some thresholds failed:")
+        print("\n❌ Some thresholds failed:")
         print(
             f"   CER  = {results['cer']:.4f} "
             f"(≤{args.threshold_cer})  "
