@@ -504,7 +504,7 @@ def main():
 
             if len(md_content) > args.max_size:
                 print(f"⚠️ تحذير: حجم الملف ({len(md_content):,}) يتجاوز الحد الأقصى ({args.max_size:,})")
-                print(f"   استخدم --split لتقسيمه، أو --max-size لزيادة الحد")
+                print("   استخدم --split لتقسيمه، أو --max-size لزيادة الحد")
 
     except Exception as e:
         print(f"❌ خطأ: {e}")
