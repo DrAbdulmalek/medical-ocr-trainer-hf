@@ -5,11 +5,11 @@
 # =============================================================
 
 # === Core ===
-streamlit==1.38.0
+streamlit==1.67.0
 Pillow>=10.0.0
 pandas>=2.0.0
 numpy<2.0.0,>=1.24.0
-matplotlib>=3.7.0
+matplotlib>=3.11.2
 python-Levenshtein>=0.21.0
 opencv-python-headless>=5.1.0.95
 
@@ -22,4 +22,4 @@ paddlepaddle>=2.5.0
 easyocr>=1.7.0
 
 # 3. Tesseract (fast, reliable for printed text)
-pytesseract>=0.3.10
+pytesseract>=0.3.13
