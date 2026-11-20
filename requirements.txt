@@ -11,7 +11,7 @@ pandas>=2.0.0
 numpy<2.0.0,>=1.24.0
 matplotlib>=3.7.0
 python-Levenshtein>=0.21.0
-opencv-python-headless>=4.8.0
+opencv-python-headless>=5.1.0.95
 
 # === OCR Engines (3 only — fits in ~16GB RAM) ===
 # 1. PaddleOCR (Arabic + English, best for mixed medical docs)
