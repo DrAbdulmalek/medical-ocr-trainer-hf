@@ -22,4 +22,4 @@ paddlepaddle>=2.5.0
 easyocr>=1.7.0
 
 # 3. Tesseract (fast, reliable for printed text)
-pytesseract>=0.3.10
+pytesseract>=0.3.13
