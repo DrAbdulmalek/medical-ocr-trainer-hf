@@ -1264,12 +1264,12 @@ if __name__ == "__main__":
     if args.json:
         print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
     else:
-        print(f"\n📊 النتائج:")
+        print("\n📊 النتائج:")
         print(f"   إجمالي الوقت: {result.total_time:.2f}s")
         print(f"   المحركات النشطة: {result.engines_active}")
         print(f"   عدد الكلمات المدمجة: {len(result.words)}")
 
-        print(f"\n📋 نتائج كل محرك:")
+        print("\n📋 نتائج كل محرك:")
         for name, er in result.engine_results.items():
             info = EnsembleOCR.ENGINE_DESCRIPTIONS.get(name, {})
             status = f"{er.word_count} كلمة" if er.available else f"غير متاح ({er.error})"
