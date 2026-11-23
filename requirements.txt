@@ -19,7 +19,7 @@ paddleocr>=2.7.0
 paddlepaddle>=2.5.0
 
 # 2. EasyOCR (80+ languages, good for Latin and mixed text)
-easyocr>=1.7.0
+easyocr>=1.7.2
 
 # 3. Tesseract (fast, reliable for printed text)
 pytesseract>=0.3.13
