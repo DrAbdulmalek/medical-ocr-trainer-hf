@@ -10,7 +10,7 @@ Pillow>=10.0.0
 pandas>=2.0.0
 numpy<2.0.0,>=1.24.0
 matplotlib>=3.11.2
-python-Levenshtein>=0.21.0
+python-Levenshtein>=0.27.5
 opencv-python-headless>=4.8.0
 
 # === OCR Engines (3 only — fits in ~16GB RAM) ===
