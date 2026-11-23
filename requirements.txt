@@ -16,7 +16,7 @@ opencv-python-headless>=4.8.0
 # === OCR Engines (3 only — fits in ~16GB RAM) ===
 # 1. PaddleOCR (Arabic + English, best for mixed medical docs)
 paddleocr>=2.7.0
-paddlepaddle>=2.5.0
+paddlepaddle>=3.3.1
 
 # 2. EasyOCR (80+ languages, good for Latin and mixed text)
 easyocr>=1.7.0
